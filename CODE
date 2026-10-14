@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#58cc02">
+<title>Поле</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    transition: background 0.3s;
+    font-weight: 700;
+  }
+
+  /* === ТЕМЫ === */
+  :root, body.theme-green {
+    --bg: #ffffff; --text: #3c3c3c; --muted: #afafaf;
+    --primary: #58cc02; --primary-dark: #46a302;
+    --secondary: #1cb0f6; --secondary-dark: #1899d6;
+    --accent: #ffc800; --danger: #ff4b4b;
+    --card: #ffffff; --card-border: #e5e5e5;
+    --locked: #e5e5e5; --locked-text: #afafaf;
+    --btn-text: #ffffff; --streak: #ff9600;
+  }
+  body.theme-dark {
+    --bg: #131f24; --text: #f1f7fb; --muted: #52656d;
+    --primary: #58cc02; --primary-dark: #46a302;
+    --secondary: #1cb0f6; --secondary-dark: #1899d6;
+    --accent: #ffc800; --danger: #ff4b4b;
+    --card: #1c2b31; --card-border: #2a3d44;
+    --locked: #2a3d44; --locked-text: #52656d;
+    --btn-text: #ffffff; --streak: #ff9600;
+  }
+  body.theme-purple {
+    --bg: #f7f0ff; --text: #3c3c3c; --muted: #afafaf;
+    --primary: #ce82ff; --primary-dark: #a568cc;
+    --secondary: #1cb0f6; --secondary-dark: #1899d6;
+    --accent: #ffc800; --danger: #ff4b4b;
+    --card: #ffffff; --card-border: #e5d5f5;
+    --locked: #e5d5f5; --locked-text: #afafaf;
+    --btn-text: #ffffff; --streak: #ff9600;
+  }
+
+  body { display: flex; justify-content: center; }
+  #app { width: 100%; max-width: 480px; padding: 0 16px 100px; min-height: 100vh; }
+
+  /* === ВЕРХНЯЯ ПАНЕЛЬ === */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; margin-bottom: 10px;
+    border-bottom: 2px solid var(--card-border);
+  }
+  .topbar-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 18px; font-weight: 800;
+  }
+  .topbar-icon { font-size: 22px; }
+  .topbar-hearts { color: var(--danger); }
+  .topbar-streak { color: var(--streak); }
+  .topbar-gems { color: var(--secondary); }
+
+  /* === КАРТА УРОКОВ === */
+  .map {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; padding: 20px 0;
+  }
+  .node-wrap {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .node {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    background: var(--primary);
+    box-shadow: 0 6px 0 var(--primary-dark);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    border: none; outline: none;
+    color: var(--btn-text);
+    position: relative;
+  }
+  .node:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--primary-dark); }
+  .node.locked {
+    background: var(--locked);
+    box-shadow: 0 6px 0 var(--card-border);
+    color: var(--locked-text);
+    cursor: not-allowed;
+  }
+  .node.done {
+    background: var(--accent);
+    box-shadow: 0 6px 0 #cc9e00;
+  }
+  .node-crown {
+    position: absolute; top: -14px; right: -8px;
+    font-size: 24px;
+  }
+  .node-label {
+    font-size: 12px; color: var(--muted);
+    margin-top: 8px; text-align: center;
+    max-width: 100px;
+  }
+  .connector {
+    width: 4px; height: 24px;
+    background: var(--card-border);
+    border-radius: 2px;
+  }
+  .connector.done { background: var(--accent); }
+
+  /* === ЭКРАН УРОКА === */
+  .progress-bar-wrap {
+    height: 16px; background: var(--card-border);
+    border-radius: 8px; margin: 12px 0; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; background: var(--primary);
+    border-radius: 8px;
+    transition: width 0.4s;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);
+  }
+
+  h1 { font-size: 28px; text-align: center; margin: 12px 0 8px; color: var(--text); font-weight: 800; }
+  h2 { font-size: 20px; margin: 8px 0; color: var(--text); font-weight: 800; }
+  p { line-height: 1.5; color: var(--text); font-size: 16px; margin: 8px 0; font-weight: 600; }
+
+  button {
+    display: block; width: 100%; padding: 16px;
+    font-size: 17px; border: none; border-radius: 16px;
+    background: var(--primary); color: var(--btn-text);
+    font-weight: 800; margin: 10px 0; cursor: pointer;
+    box-shadow: 0 5px 0 var(--primary-dark);
+    transition: all 0.1s; touch-action: manipulation;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-family: inherit;
+  }
+  button:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 var(--primary-dark);
+  }
+  button.secondary {
+    background: var(--card); color: var(--text);
+    box-shadow: 0 5px 0 var(--card-border);
+    border: 2px solid var(--card-border);
+  }
+  button.danger {
+    background: var(--danger); color: white;
+    box-shadow: 0 5px 0 #cc3c3c;
+  }
+  button.gold {
+    background: var(--accent); color: #7a5c00;
+    box-shadow: 0 5px 0 #cc9e00;
+  }
+
+  /* === БЛОКИ КОМАНД === */
+  .block {
+    padding: 18px 16px; margin: 10px 0; border-radius: 16px;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    box-shadow: 0 4px 0 var(--card-border);
+    color: var(--text);
+    font-size: 16px; cursor: pointer;
+    font-weight: 700;
+    transition: all 0.1s;
+    touch-action: manipulation; user-select: none;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .block:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--card-border); }
+  .block.error {
+    border-color: var(--danger);
+    background: rgba(255,75,75,0.1);
+    animation: shake 0.4s;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+  .block-icon { font-size: 22px; }
+
+  /* === СЛОТ ПРОГРАММЫ === */
+  .slot {
+    min-height: 60px; padding: 16px; margin: 12px 0; border-radius: 16px;
+    background: var(--card);
+    border: 3px dashed var(--card-border);
+    text-align: center; font-size: 15px; color: var(--muted);
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 6px;
+  }
+  .slot.filled { border-style: solid; border-color: var(--primary); color: var(--text); }
+  .slot-item {
+    background: var(--primary); color: white;
+    padding: 6px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 800;
+  }
+
+  .missing-slot {
+    min-height: 60px; padding: 16px; margin: 12px 0; border-radius: 16px;
+    background: rgba(255,200,0,0.15);
+    border: 3px dashed var(--accent);
+    text-align: center; font-size: 16px; color: #7a5c00;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .program-line {
+    padding: 16px; margin: 8px 0; border-radius: 16px;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    box-shadow: 0 4px 0 var(--card-border);
+    color: var(--text);
+    font-size: 16px; text-align: center;
+    font-weight: 800; user-select: none;
+  }
+  .program-line.clickable {
+    cursor: pointer; transition: all 0.1s;
+  }
+  .program-line.clickable:active {
+    transform: translateY(3px); box-shadow: 0 1px 0 var(--card-border);
+  }
+  .program-line.error {
+    border-color: var(--danger);
+    background: rgba(255,75,75,0.1);
+    animation: shake 0.4s;
+  }
+
+  /* === ПОДСКАЗКИ === */
+  .hint {
+    background: rgba(28,176,246,0.1);
+    border: 2px solid var(--secondary);
+    border-radius: 16px;
+    padding: 14px 16px; margin: 12px 0;
+    font-size: 14px; color: var(--text);
+    font-weight: 600;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .hint-icon { font-size: 20px; flex-shrink: 0; }
+  .hint-danger {
+    background: rgba(255,75,75,0.1);
+    border-color: var(--danger);
+  }
+
+  /* === ОБЪЯСНЕНИЕ === */
+  .explain-card {
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 12px 0;
+    box-shadow: 0 4px 0 var(--card-border);
+  }
+  .explain-card h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    color: var(--primary);
+    font-weight: 800;
+  }
+  .example-card {
+    background: rgba(255,200,0,0.1);
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    padding: 14px;
+    margin: 12px 0;
+    font-size: 15px;
+    color: #7a5c00;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* === СЕРДЦА И ПРОГРЕСС === */
+  .hearts {
+    display: flex; gap: 4px; justify-content: center;
+    margin: 8px 0;
+  }
+  .heart { font-size: 20px; }
+  .heart.empty { opacity: 0.3; }
+
+  /* === ФИНАЛ === */
+  .reward {
+    text-align: center; font-size: 80px; margin: 30px 0;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
+  .stats {
+    display: flex; justify-content: space-around;
+    padding: 20px 0; margin: 20px 0;
+    border-top: 2px solid var(--card-border);
+    border-bottom: 2px solid var(--card-border);
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 28px; font-weight: 800;
+    color: var(--primary);
+  }
+  .stat-label {
+    font-size: 12px; color: var(--muted);
+    font-weight: 700; margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  /* === НАСТРОЙКИ === */
+  .settings-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px; margin: 10px 0;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 16px;
+    box-shadow: 0 4px 0 var(--card-border);
+  }
+  .theme-btn {
+    padding: 10px 14px; border-radius: 12px;
+    border: 2px solid var(--card-border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer; font-size: 14px;
+    font-weight: 800;
+    margin: 0 4px;
+  }
+  .theme-btn.active {
+    border-color: var(--primary);
+    background: rgba(88,204,2,0.1);
+    color: var(--primary);
+  }
+  .theme-row {
+    display: flex; gap: 6px; justify-content: center;
+    margin-top: 10px; flex-wrap: wrap;
+  }
+
+  .center { text-align: center; }
+  .desc { text-align: center; font-size: 15px; color: var(--muted); margin: 8px 10px; line-height: 1.5; font-weight: 600; }
+
+  .back-btn {
+    background: transparent; color: var(--muted);
+    box-shadow: none; font-size: 14px;
+    padding: 12px 0; margin-bottom: 4px;
+    text-align: left; text-transform: none;
+    letter-spacing: 0;
+  }
+  .back-btn:active { transform: none; box-shadow: none; }
+
+  @media (max-width: 360px) {
+    h1 { font-size: 24px; }
+    .node { width: 70px; height: 70px; font-size: 30px; }
+  }
+</style>
+</head>
+<body class="theme-green">
+<div id="app"></div>
+<script>
+/* ==================== СОСТОЯНИЕ ==================== */
+var state = {
+  screen: 'map',
+  lesson: 0,
+  stars: [],
+  lives: 5,
+  errors: 0,
+  program: [],
+  plotState: ['', '', ''],
+  hintText: '',
+  night: false,
+  canSkip: false,
+  showExplain: false,
+  currentBlocks: [],
+  fixProgram: [],
+  stage: 1,
+  theme: 'green',
+  soundOn: true,
+  streak: 0,
+  gems: 0
+};
+
+/* ==================== ДАННЫЕ УРОКОВ (10) ==================== */
+var BLOCKS = ['Вспахать', 'Посадить', 'Полить', 'Убрать сорняки', 'Собрать'];
+var BLOCK_ICONS = { 'Вспахать': '🚜', 'Посадить': '🌱', 'Полить': '💧', 'Убрать сорняки': '🌿', 'Собрать': '🧺' };
+
+var LESSONS = [
+  { title: 'Первая грядка', icon: '🌱', topic: 'Порядок команд', mode: 'build',
+    explain: 'Программа — это порядок команд. Компьютер выполняет их по очереди.',
+    example: 'Вспахать → Посадить → Полить.',
+    task: 'Собери: вспахать → посадить → полить.',
+    answer: ['Вспахать', 'Посадить', 'Полить'],
+    hints: ['Что нужно сделать с землёй перед посадкой?', 'Первый блок — вспахать.', 'Потом посади.', 'Правильно: Вспахать → Посадить → Полить.'] },
+
+  { title: 'Вода для ростка', icon: '💧', topic: 'Порядок команд', mode: 'build',
+    explain: 'После посадки растение нужно полить.',
+    example: 'Посадить → Полить.',
+    task: 'Собери: посадить → полить.',
+    answer: ['Посадить', 'Полить'],
+    hints: ['Сначала посади семя.', 'Потом полей.', 'Вода идёт после посадки.', 'Правильно: Посадить → Полить.'] },
+
+  { title: 'Тут мало что есть', icon: '🧩', topic: 'Пропущенная команда', mode: 'missing',
+    explain: 'В программе не хватает блока.',
+    example: 'Вспахать → ? → Полить.',
+    task: 'Что вставить вместо «?»:',
+    before: 'Вспахать', after: 'Полить',
+    answer: 'Посадить',
+    hints: ['Чего не хватает между вспашкой и поливом?', 'После вспашки — посадка.', 'Пропущен блок «Посадить».', 'Ответ: Посадить.'] },
+
+  { title: 'Мой день', icon: '☀️', topic: 'Сборка + исправление', mode: 'both',
+    explain: 'Собери программу сам, потом проверь и исправь.',
+    example: 'Этап 1: собери. Этап 2: исправь.',
+    task: 'Этап 1: Собери. Этап 2: Исправь.',
+    stage1Answer: ['Вспахать', 'Посадить', 'Полить'],
+    stage2Broken: ['Вспахать', 'Полить', 'Посадить'],
+    stage2Answer: ['Вспахать', 'Посадить', 'Полить'],
+    hints: ['Собери правильно.', 'Потом проверь порядок.', 'Посадить надо до полива.', 'Правильно: Вспахать → Посадить → Полить.'] },
+
+  { title: 'Сорняки', icon: '🌿', topic: 'Новая команда', mode: 'build',
+    explain: 'Сорняки мешают расти. Их надо убрать до сбора.',
+    example: 'Вспахать → Посадить → Полить → Убрать сорняки.',
+    task: 'Собери: вспахать → посадить → полить → убрать сорняки.',
+    answer: ['Вспахать', 'Посадить', 'Полить', 'Убрать сорняки'],
+    hints: ['Сорняки мешают.', 'Порядок: вспахать, посадить, полить.', 'Потом убрать сорняки.', 'Правильно: Вспахать → Посадить → Полить → Убрать сорняки.'] },
+
+  { title: 'Полный день', icon: '🌾', topic: 'Все команды', mode: 'build',
+    explain: 'Используй все команды.',
+    example: 'Вспахать → Посадить → Полить → Убрать сорняки → Собрать.',
+    task: 'Собери полную программу.',
+    answer: ['Вспахать', 'Посадить', 'Полить', 'Убрать сорняки', 'Собрать'],
+    hints: ['Не забудь сорняки.', 'Порядок: вспахать, посадить, полить.', 'Сорняки — после полива.', 'Правильно: Вспахать → Посадить → Полить → Убрать сорняки → Собрать.'] },
+
+  { title: 'Сломанный день', icon: '🔧', topic: 'Найти ошибку', mode: 'fix',
+    explain: 'Программа сломана. Исправь порядок.',
+    example: 'Было: Вспахать → Полить → Посадить.',
+    task: 'Исправь: вспахать → посадить → полить → собрать.',
+    broken: ['Вспахать', 'Полить', 'Посадить', 'Собрать'],
+    answer: ['Вспахать', 'Посадить', 'Полить', 'Собрать'],
+    hints: ['Порядок неправильный.', 'Посадить надо до полива.', 'Полить — после посадки.', 'Правильно: Вспахать → Посадить → Полить → Собрать.'] },
+
+  { title: 'Утренняя работа', icon: '🌅', topic: 'Сборка', mode: 'build',
+    explain: 'Утро — время работы на поле.',
+    example: 'Вспахать → Посадить → Полить.',
+    task: 'Собери утреннюю программу.',
+    answer: ['Вспахать', 'Посадить', 'Полить'],
+    hints: ['С чего начинается утро?', 'Сначала земля.', 'Потом семя.', 'Правильно: Вспахать → Посадить → Полить.'] },
+
+  { title: 'Сбор урожая', icon: '🧺', topic: 'Сборка', mode: 'build',
+    explain: 'Когда урожай вырос — пора собирать.',
+    example: 'Полить → Собрать.',
+    task: 'Собери: полить → собрать.',
+    answer: ['Полить', 'Собрать'],
+    hints: ['Урожай надо собрать.', 'Полить — перед сбором.', 'Собрать — последним.', 'Правильно: Полить → Собрать.'] },
+
+  { title: 'Мастер поля', icon: '👑', topic: 'Финальное испытание', mode: 'both',
+    explain: 'Собери сам, потом исправь.',
+    example: 'Этап 1: собери. Этап 2: исправь.',
+    task: 'Этап 1: Собери. Этап 2: Исправь.',
+    stage1Answer: ['Вспахать', 'Посадить', 'Полить', 'Убрать сорняки', 'Собрать'],
+    stage2Broken: ['Вспахать', 'Полить', 'Посадить', 'Убрать сорняки', 'Собрать'],
+    stage2Answer: ['Вспахать', 'Посадить', 'Полить', 'Убрать сорняки', 'Собрать'],
+    hints: ['Собери всё.', 'Потом проверь.', 'Посадить — до полива.', 'Правильно: Вспахать → Посадить → Полить → Убрать сорняки → Собрать.'] }
+];
+
+var MISSING_OPTIONS = ['Вспахать', 'Посадить', 'Полить'];
+
+/* ==================== ЗВУКИ ==================== */
+var audioCtx = null;
+function playTone(freq, duration, type) {
+  if (!state.soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+function soundClick() { playTone(700, 0.05, 'sine'); }
+function soundWin() { playTone(800, 0.12); setTimeout(function(){ playTone(1000, 0.12); }, 100); setTimeout(function(){ playTone(1400, 0.25); }, 220); }
+function soundFail() { playTone(180, 0.25, 'sawtooth'); }
+function soundLocked() { playTone(300, 0.15, 'square'); }
+
+/* ==================== УТИЛИТЫ ==================== */
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem('pole_stars', JSON.stringify(state.stars));
+    localStorage.setItem('pole_theme', state.theme);
+    localStorage.setItem('pole_sound', state.soundOn ? '1' : '0');
+    localStorage.setItem('pole_streak', state.streak);
+    localStorage.setItem('pole_gems', state.gems);
+  } catch(e) {}
+}
+
+function loadProgress() {
+  try {
+    var s = localStorage.getItem('pole_stars');
+    if (s) state.stars = JSON.parse(s);
+    var t = localStorage.getItem('pole_theme');
+    if (t) { state.theme = t; document.body.className = 'theme-' + t; }
+    var so = localStorage.getItem('pole_sound');
+    if (so !== null) state.soundOn = so === '1';
+    var st = localStorage.getItem('pole_streak');
+    if (st) state.streak = parseInt(st);
+    var g = localStorage.getItem('pole_gems');
+    if (g) state.gems = parseInt(g);
+  } catch(e) {}
+  while (state.stars.length < LESSONS.length) state.stars.push(0);
+}
+
+function isUnlocked(i) {
+  if (i === 0) return true;
+  return state.stars[i - 1] === 1;
+}
+
+/* ==================== НАСТРОЙКИ ==================== */
+function setTheme(name) {
+  state.theme = name;
+  document.body.className = 'theme-' + name;
+  saveProgress();
+  render();
+}
+
+function toggleSound() {
+  state.soundOn = !state.soundOn;
+  saveProgress();
+  render();
+}
+
+/* ==================== РЕНДЕР ==================== */
+function render() {
+  var app = document.getElementById('app');
+  if (state.screen === 'map') app.innerHTML = renderMap();
+  else if (state.screen === 'settings') app.innerHTML = renderSettings();
+  else if (state.screen === 'lesson') app.innerHTML = renderLesson();
+  else if (state.screen === 'end') app.innerHTML = renderEnd();
+}
+
+function renderTopbar() {
+  var hearts = '';
+  for (var i = 0; i < 5; i++) hearts += i < state.lives ? '❤️' : '🖤';
+  return '<div class="topbar">' +
+    '<div class="topbar-item topbar-streak"><span class="topbar-icon">🔥</span>' + state.streak + '</div>' +
+    '<div class="topbar-item topbar-hearts">' + hearts + '</div>' +
+    '<div class="topbar-item topbar-gems"><span class="topbar-icon">💎</span>' + state.gems + '</div>' +
+  '</div>';
+}
+
+function renderMap() {
+  var html = renderTopbar();
+  html += '<h1>Поле</h1>';
+  html += '<p class="desc">Учись программировать,<br>выращивая урожай.</p>';
+
+  html += '<div class="map">';
+
+  for (var i = 0; i < LESSONS.length; i++) {
+    var L = LESSONS[i];
+    var done = state.stars[i] === 1;
+    var unlocked = isUnlocked(i);
+    var cls = done ? 'done' : (unlocked ? '' : 'locked');
+    var icon = done ? '👑' : (unlocked ? L.icon : '🔒');
+    var onclick = unlocked ? ' onclick="soundClick(); startLesson(' + i + ')"' : ' onclick="soundLocked()"';
+
+    html += '<div class="node-wrap">' +
+      '<button class="node ' + cls + '"' + onclick + '>' + icon +
+        (done ? '<span class="node-crown">⭐</span>' : '') +
+      '</button>' +
+    '</div>';
+    html += '<div class="node-label">' + (i + 1) + '. ' + L.title + '</div>';
+
+    if (i < LESSONS.length - 1) {
+      html += '<div class="connector ' + (done ? 'done' : '') + '"></div>';
+    }
+  }
+
+  html += '</div>';
+
+  html += '<button class="secondary" onclick="soundClick(); goSettings()">⚙️ Настройки</button>';
+
+  return html;
+}
+
+function goSettings() { state.screen = 'settings'; render(); }
+function goMap() { state.screen = 'map'; render(); }
+
+function renderSettings() {
+  var html = '<button class="back-btn" onclick="soundClick(); goMap()">← Назад</button>';
+  html += '<h2>⚙️ Настройки</h2>';
+
+  html += '<div class="settings-item">' +
+    '<div><b>Тема</b><div style="font-size:12px;color:var(--muted)">Цвет оформления</div></div>' +
+  '</div>';
+
+  var themes = [
+    { id: 'green', name: '🟢 Зелёная' },
+    { id: 'dark', name: '🌙 Тёмная' },
+    { id: 'purple', name: '🟣 Фиолетовая' }
+  ];
+
+  html += '<div class="theme-row">';
+  for (var i = 0; i < themes.length; i++) {
+    var t = themes[i];
+    var active = state.theme === t.id ? ' active' : '';
+    html += '<button class="theme-btn' + active + '" onclick="setTheme(\'' + t.id + '\')">' + t.name + '</button>';
+  }
+  html += '</div>';
+
+  html += '<div class="settings-item" style="margin-top:16px">' +
+    '<div><b>Звук</b><div style="font-size:12px;color:var(--muted)">' + (state.soundOn ? 'Включён' : 'Выключен') + '</div></div>' +
+    '<button class="theme-btn" style="margin:0;padding:10px 20px" onclick="toggleSound()">' + (state.soundOn ? '🔊' : '🔇') + '</button>' +
+  '</div>';
+
+  html += '<button class="danger" style="margin-top:20px" onclick="resetProgress()">Сбросить прогресс</button>';
+
+  return html;
+}
+
+function resetProgress() {
+  state.stars = [];
+  for (var i = 0; i < LESSONS.length; i++) state.stars.push(0);
+  state.streak = 0;
+  state.gems = 0;
+  saveProgress();
+  goMap();
+}
+
+function renderLesson() {
+  var L = LESSONS[state.lesson];
+  var total = LESSONS.length;
+  var done = state.lesson;
+
+  var progress = Math.round((done / total) * 100);
+
+  var html = '<button class="back-btn" onclick="soundClick(); goMap()">✕ Выйти</button>';
+  html += '<div class="progress-bar-wrap"><div class="progress-bar" style="width:' + progress + '%"></div></div>';
+
+  if (state.showExplain) {
+    html += '<h1>' + L.icon + ' ' + L.title + '</h1>';
+    html += '<div class="explain-card"><h3>📖 Что это?</h3><p>' + L.explain + '</p></div>';
+    html += '<div class="example-card">' + L.example + '</div>';
+    html += '<button onclick="soundClick(); closeExplain()">Понятно, дальше →</button>';
+    return html;
+  }
+
+  html += '<h1>' + L.icon + ' ' + L.title + '</h1>';
+
+  var heartsHTML = '';
+  for (var h = 0; h < 5; h++) heartsHTML += '<span class="heart' + (h < state.lives ? '' : ' empty') + '">❤️</span>';
+  html += '<div class="hearts">' + heartsHTML + '</div>';
+
+  html += '<p>' + L.task + '</p>';
+
+  if (state.hintText) {
+    var hintCls = state.errors >= 3 ? 'hint hint-danger' : 'hint';
+    html += '<div class="' + hintCls + '"><span class="hint-icon">💡</span><div>' + state.hintText + '</div></div>';
+  }
+
+  var body = '';
+  if (L.mode === 'build') body = renderBuildMode();
+  else if (L.mode === 'missing') body = renderMissingMode();
+  else if (L.mode === 'fix') body = renderFixMode();
+  else if (L.mode === 'both') {
+    if (state.stage === 1) {
+      body = '<p class="desc">Этап 1: собери программу</p>' + renderBuildMode();
+    } else {
+      body = '<p class="desc">Этап 2: исправь ошибку</p>' + renderFixMode();
+    }
+  }
+
+  html += body;
+
+  if (state.canSkip) {
+    html += '<button class="gold" onclick="soundClick(); skipLesson()">Дальше →</button>';
+  }
+
+  html += '<button class="secondary" onclick="soundClick(); goMap()">Выйти</button>';
+
+  return html;
+}
+
+function renderBuildMode() {
+  var slotContent = '';
+  if (state.program.length) {
+    slotContent = state.program.map(function(b) {
+      return '<span class="slot-item">' + BLOCK_ICONS[b] + ' ' + b + '</span>';
+    }).join('');
+  } else {
+    slotContent = 'Нажми на команду ниже';
+  }
+
+  var blocksHTML = '';
+  for (var i = 0; i < state.currentBlocks.length; i++) {
+    var b = state.currentBlocks[i];
+    blocksHTML += '<div class="block" onclick="soundClick(); addBlock(\'' + b + '\')">' +
+      '<span class="block-icon">' + BLOCK_ICONS[b] + '</span>' + b +
+    '</div>';
+  }
+
+  return '<div class="slot' + (state.program.length ? ' filled' : '') + '">' + slotContent + '</div>' +
+    blocksHTML +
+    '<button onclick="soundClick(); checkBuild()">Проверить ✓</button>';
+}
+
+function renderMissingMode() {
+  var L = LESSONS[state.lesson];
+  var html = '';
+  html += '<div class="program-line">' + BLOCK_ICONS[L.before] + ' ' + L.before + '</div>';
+  html += '<div class="missing-slot">❓ Что тут?</div>';
+  html += '<div class="program-line">' + BLOCK_ICONS[L.after] + ' ' + L.after + '</div>';
+  html += '<p class="center desc">Что вставить вместо «?»:</p>';
+  for (var i = 0; i < MISSING_OPTIONS.length; i++) {
+    var b = MISSING_OPTIONS[i];
+    html += '<div class="block" onclick="soundClick(); chooseMissing(\'' + b + '\')">' +
+      '<span class="block-icon">' + BLOCK_ICONS[b] + '</span>' + b +
+    '</div>';
+  }
+  return html;
+}
+
+function renderFixMode() {
+  var html = '';
+  for (var i = 0; i < state.fixProgram.length; i++) {
+    var b = state.fixProgram[i];
+    html += '<div class="program-line clickable" onclick="soundClick(); fixBlock(' + i + ')">' +
+      BLOCK_ICONS[b] + ' ' + b +
+    '</div>';
+  }
+  html += '<button onclick="soundClick(); checkFix()">Проверить ✓</button>';
+  return html;
+}
+
+function renderEnd() {
+  var got = 0;
+  for (var i = 0; i < state.stars.length; i++) if (state.stars[i]) got++;
+
+  var title;
+  if (got === LESSONS.length) title = 'Мастер поля';
+  else if (got >= 7) title = 'Опытный фермер';
+  else if (got >= 4) title = 'Начинающий фермер';
+  else title = 'Новичок';
+
+  var html = '<h1>🎉 Поздравляем!</h1>';
+  html += '<div class="reward">🏆</div>';
+  html += '<p class="center">Ты прошёл все уроки!</p>';
+
+  html += '<div class="stats">' +
+    '<div class="stat"><div class="stat-value">' + got + '</div><div class="stat-label">Уроков</div></div>' +
+    '<div class="stat"><div class="stat-value">' + state.gems + '</div><div class="stat-label">Кристаллов</div></div>' +
+    '<div class="stat"><div class="stat-value">' + state.streak + '</div><div class="stat-label">Серия</div></div>' +
+  '</div>';
+
+  html += '<p class="center"><b>Титул: ' + title + '</b></p>';
+
+  html += '<button onclick="soundClick(); goMap()">К карте</button>';
+  html += '<button class="secondary" onclick="soundClick(); resetProgress()">Пройти заново</button>';
+
+  return html;
+}
+
+/* ==================== ЛОГИКА ==================== */
+function startLesson(i) {
+  var L = LESSONS[i];
+  state.lesson = i;
+  state.screen = 'lesson';
+  state.lives = 5;
+  state.errors = 0;
+  state.program = [];
+  state.hintText = '';
+  state.canSkip = false;
+  state.showExplain = true;
+  state.stage = 1;
+  state.currentBlocks = shuffle(BLOCKS);
+  state.fixProgram = L.broken ? L.broken.slice() : (L.stage2Broken ? L.stage2Broken.slice() : []);
+  render();
+}
+
+function closeExplain() { state.showExplain = false; render(); }
+
+function addBlock(b) {
+  state.program.push(b);
+  state.hintText = '';
+  render();
+}
+
+function chooseMissing(b) {
+  var L = LESSONS[state.lesson];
+  if (b === L.answer) win(); else fail();
+}
+
+function fixBlock(i) {
+  var cur = state.fixProgram[i];
+  var idx = BLOCKS.indexOf(cur);
+  var next = BLOCKS[(idx + 1) % BLOCKS.length];
+  state.fixProgram[i] = next;
+  state.hintText = '';
+  render();
+}
+
+function checkBuild() {
+  var L = LESSONS[state.lesson];
+  var answer;
+  if (L.mode === 'both') answer = (state.stage === 1) ? L.stage1Answer : L.stage2Answer;
+  else answer = L.answer;
+
+  if (JSON.stringify(state.program) === JSON.stringify(answer)) {
+    if (L.mode === 'both' && state.stage === 1) {
+      state.program = [];
+      state.stage = 2;
+      state.hintText = '';
+      state.errors = 0;
+      render();
+      return;
+    }
+    win();
+  } else fail();
+}
+
+function checkFix() {
+  var L = LESSONS[state.lesson];
+  var answer = (L.mode === 'both') ? L.stage2Answer : L.answer;
+  if (JSON.stringify(state.fixProgram) === JSON.stringify(answer)) win(); else fail();
+}
+
+function fail() {
+  state.errors++;
+  state.lives--;
+  var L = LESSONS[state.lesson];
+
+  if (L.mode === 'build' || (L.mode === 'both' && state.stage === 1)) state.program = [];
+  soundFail();
+
+  if (state.lives <= 0) {
+    state.hintText = '💔 Потерял все жизни! Попробуй снова.';
+    state.canSkip = false;
+    render();
+    setTimeout(function() {
+      state.lives = 5;
+      state.errors = 0;
+      state.program = [];
+      state.hintText = '';
+      state.stage = 1;
+      state.fixProgram = L.broken ? L.broken.slice() : (L.stage2Broken ? L.stage2Broken.slice() : []);
+      render();
+    }, 1800);
+    return;
+  }
+
+  if (state.errors >= 3) {
+    state.hintText = L.hints[3];
+    state.errors = 0;
+    state.canSkip = true;
+  } else {
+    state.hintText = L.hints[state.errors - 1];
+  }
+
+  render();
+
+  setTimeout(function() {
+    var blocks = document.querySelectorAll('.block, .program-line');
+    for (var i = 0; i < blocks.length; i++) blocks[i].classList.add('error');
+    setTimeout(function() {
+      var blocks2 = document.querySelectorAll('.block, .program-line');
+      for (var j = 0; j < blocks2.length; j++) blocks2[j].classList.remove('error');
+    }, 600);
+  }, 100);
+}
+
+function skipLesson() {
+  state.canSkip = false;
+  nextLesson();
+}
+
+function nextLesson() {
+  var next = state.lesson + 1;
+  if (next < LESSONS.length) {
+    startLesson(next);
+  } else {
+    state.screen = 'end';
+    render();
+  }
+}
+
+function win() {
+  state.stars[state.lesson] = 1;
+  state.gems += 5;
+  state.streak++;
+  saveProgress();
+  soundWin();
+
+  render();
+
+  setTimeout(function() { nextLesson(); }, 1400);
+}
+
+/* ==================== ЗАПУСК ==================== */
+loadProgress();
+render();
+</script>
+</body>
+</html>
